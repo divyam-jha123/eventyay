@@ -1,9 +1,11 @@
 import smtplib
 
 import pytest
+from allauth.core import ratelimit
 from django.core.cache import cache
 from django.core.mail.backends.locmem import EmailBackend
 from django.template.loader import render_to_string
+from django.test import RequestFactory
 from django.urls import reverse
 
 from eventyay.base.models import User
@@ -42,6 +44,13 @@ def sign_up(client, email):
     assert response['Location'] == SENT_URL
 
 
+def reset_resend_cooldown(*emails):
+    # Drop only allauth's per-address cooldown, leaving sessions and other cache entries intact.
+    request = RequestFactory().get(SENT_URL)
+    for email in emails:
+        ratelimit.clear(request, action='confirm_email', key=email.lower())
+
+
 @pytest.mark.django_db
 def test_page_shows_pending_address_and_resend_button(client):
     sign_up(client, 'new@example.com')
@@ -56,7 +65,7 @@ def test_page_shows_pending_address_and_resend_button(client):
 def test_resend_sends_confirmation_email(client, mailoutbox):
     sign_up(client, 'new@example.com')
     # Skip the cooldown started by the signup email.
-    cache.clear()
+    reset_resend_cooldown('new@example.com')
 
     response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
 
@@ -84,7 +93,7 @@ def test_existing_address_looks_like_a_new_signup(client, mailoutbox):
     content = client.get(SENT_URL).content.decode()
     assert 'taken@example.com' in content
     assert RESEND_BUTTON in content
-    cache.clear()
+    reset_resend_cooldown('taken@example.com')
 
     response = client.post(SENT_URL, {'email': 'taken@example.com'}, follow=True)
 
@@ -100,7 +109,7 @@ def test_expired_pending_login_has_no_resend(client, mailoutbox, settings):
     sign_up(client, 'new@example.com')
     # Display (and consume) the signup's "sent" message before the pending login expires.
     client.get(SENT_URL)
-    cache.clear()
+    reset_resend_cooldown('new@example.com')
     settings.ACCOUNT_LOGIN_TIMEOUT = -1
 
     response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
@@ -127,7 +136,7 @@ def test_page_without_pending_signup_has_no_resend(client, mailoutbox):
 @pytest.mark.django_db
 def test_resend_mail_failure_shows_retryable_error(client, mailoutbox, monkeypatch):
     sign_up(client, 'new@example.com')
-    cache.clear()
+    reset_resend_cooldown('new@example.com')
 
     def fail(self, messages):
         raise smtplib.SMTPServerDisconnected('Connection unexpectedly closed')
@@ -152,7 +161,7 @@ def test_resend_from_stale_tab_does_not_send_to_newer_signup(client, mailoutbox)
     sign_up(client, 'first@example.com')
     # A second signup in another tab replaces the pending login in the shared session.
     sign_up(client, 'second@example.com')
-    cache.clear()
+    reset_resend_cooldown('first@example.com', 'second@example.com')
 
     response = client.post(SENT_URL, {'email': 'first@example.com'}, follow=True)
     content = response.content.decode()
