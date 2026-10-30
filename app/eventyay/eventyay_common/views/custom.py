@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import smtplib
 from functools import cached_property
 from typing import Any
 
@@ -10,6 +12,7 @@ from allauth.account.stages import EmailVerificationStage, LoginStageController
 from allauth.account.views import ConfirmEmailView as _ConfirmEmailView
 from allauth.account.views import EmailVerificationSentView as _EmailVerificationSentView
 from allauth.account.views import SignupView as _SignupView
+from allauth.core import ratelimit
 from django import forms
 from django.conf import settings
 from django.contrib import messages
@@ -30,6 +33,9 @@ from eventyay.base.services.turnstile import (
     verify_turnstile_token,
 )
 from eventyay.helpers.http import get_client_ip
+
+
+logger = logging.getLogger(__name__)
 
 
 class SignupConfirmationForm(forms.Form):
@@ -110,14 +116,34 @@ class EmailVerificationSentView(_EmailVerificationSentView):
         return login.email or (login.user.email if login.user else None)
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponseRedirect:
+        redirect = HttpResponseRedirect(reverse('account_email_verification_sent'))
         login = self.pending_login
+        email = self.pending_email
+        if not login or not email:
+            return redirect
+        # Allauth keeps a single pending login per session, so a signup in another tab replaces it.
+        # Only resend to the address this page showed.
+        if request.POST.get('email') != email:
+            messages.error(
+                request,
+                _('This page was out of date. Please check the email address below and try again.'),
+            )
+            return redirect
+        try:
+            sent = send_verification_email_at_login(request, login)
+        except (smtplib.SMTPException, OSError):
+            logger.exception('Failed to resend the verification email')
+            # Allauth starts the cooldown before sending; clear it so the visitor can retry.
+            ratelimit.clear(request, action='confirm_email', key=email.lower())
+            messages.error(request, _('We could not send the verification email. Please try again later.'))
+            return redirect
         # On success allauth adds its own "sent" message; within the cooldown it silently skips sending.
-        if login and self.pending_email and not send_verification_email_at_login(request, login):
+        if not sent:
             messages.error(
                 request,
                 _('A verification email was sent recently. Please wait a few minutes before requesting another one.'),
             )
-        return HttpResponseRedirect(reverse('account_email_verification_sent'))
+        return redirect
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)

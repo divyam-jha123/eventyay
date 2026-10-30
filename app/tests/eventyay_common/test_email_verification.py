@@ -1,5 +1,8 @@
+import smtplib
+
 import pytest
 from django.core.cache import cache
+from django.core.mail.backends.locmem import EmailBackend
 from django.template.loader import render_to_string
 from django.urls import reverse
 
@@ -11,6 +14,9 @@ SENT_URL = '/accounts/confirm-email/'
 PASSWORD = 'Sup3r-Secret-pw!'
 RESEND_BUTTON = 'Resend verification email'
 COOLDOWN_MESSAGE = 'A verification email was sent recently.'
+SEND_FAILED_MESSAGE = 'We could not send the verification email.'
+OUT_OF_DATE_MESSAGE = 'This page was out of date.'
+NO_PENDING_MESSAGE = 'There is no email verification pending in this browser.'
 
 
 @pytest.fixture(autouse=True)
@@ -52,7 +58,7 @@ def test_resend_sends_confirmation_email(client, mailoutbox):
     # Skip the cooldown started by the signup email.
     cache.clear()
 
-    response = client.post(SENT_URL, follow=True)
+    response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
 
     assert response.redirect_chain == [(SENT_URL, 302)]
     assert len(mailoutbox) == 2
@@ -64,7 +70,7 @@ def test_resend_sends_confirmation_email(client, mailoutbox):
 def test_resend_within_cooldown_shows_error_and_sends_nothing(client, mailoutbox):
     sign_up(client, 'new@example.com')
 
-    response = client.post(SENT_URL, follow=True)
+    response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
 
     assert response.redirect_chain == [(SENT_URL, 302)]
     assert len(mailoutbox) == 1
@@ -80,7 +86,7 @@ def test_existing_address_looks_like_a_new_signup(client, mailoutbox):
     assert RESEND_BUTTON in content
     cache.clear()
 
-    response = client.post(SENT_URL, follow=True)
+    response = client.post(SENT_URL, {'email': 'taken@example.com'}, follow=True)
 
     assert 'Confirmation email sent to taken@example.com.' in response.content.decode()
     assert len(mailoutbox) == 2
@@ -97,7 +103,7 @@ def test_expired_pending_login_has_no_resend(client, mailoutbox, settings):
     cache.clear()
     settings.ACCOUNT_LOGIN_TIMEOUT = -1
 
-    response = client.post(SENT_URL, follow=True)
+    response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
     content = response.content.decode()
 
     assert response.redirect_chain == [(SENT_URL, 302)]
@@ -109,10 +115,51 @@ def test_expired_pending_login_has_no_resend(client, mailoutbox, settings):
 
 @pytest.mark.django_db
 def test_page_without_pending_signup_has_no_resend(client, mailoutbox):
-    response = client.post(SENT_URL, follow=True)
+    response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
+    content = response.content.decode()
 
     assert len(mailoutbox) == 0
-    assert RESEND_BUTTON not in response.content.decode()
+    assert RESEND_BUTTON not in content
+    assert NO_PENDING_MESSAGE in content
+    assert "We've sent" not in content
+
+
+@pytest.mark.django_db
+def test_resend_mail_failure_shows_retryable_error(client, mailoutbox, monkeypatch):
+    sign_up(client, 'new@example.com')
+    cache.clear()
+
+    def fail(self, messages):
+        raise smtplib.SMTPServerDisconnected('Connection unexpectedly closed')
+
+    with monkeypatch.context() as patched:
+        patched.setattr(EmailBackend, 'send_messages', fail)
+        response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
+
+    assert response.status_code == 200
+    assert SEND_FAILED_MESSAGE in response.content.decode()
+    assert len(mailoutbox) == 1
+
+    # The failed attempt must not start the cooldown.
+    response = client.post(SENT_URL, {'email': 'new@example.com'}, follow=True)
+
+    assert 'Confirmation email sent to new@example.com.' in response.content.decode()
+    assert len(mailoutbox) == 2
+
+
+@pytest.mark.django_db
+def test_resend_from_stale_tab_does_not_send_to_newer_signup(client, mailoutbox):
+    sign_up(client, 'first@example.com')
+    # A second signup in another tab replaces the pending login in the shared session.
+    sign_up(client, 'second@example.com')
+    cache.clear()
+
+    response = client.post(SENT_URL, {'email': 'first@example.com'}, follow=True)
+    content = response.content.decode()
+
+    assert len(mailoutbox) == 2
+    assert OUT_OF_DATE_MESSAGE in content
+    assert 'second@example.com' in content
 
 
 @pytest.mark.django_db

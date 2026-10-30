@@ -17,6 +17,7 @@ from eventyay.base.auth import SPAM_ACCOUNT_ERROR, get_auth_backends
 from eventyay.common.consts import KEY_LAST_FORCE_LOGIN, KEY_LONG_SESSION, KEY_SOCIAL_KEEP_LOGGED_IN
 from eventyay.plugins.socialauth.schemas.oauth2_params import OAuth2Params
 
+
 # HTML bodies for allauth emails, built on the shared pretixbase email layout.
 # The subject and plain-text body still come from allauth's default templates.
 HTML_MAIL_TEMPLATES = {
