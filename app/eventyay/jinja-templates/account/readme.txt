@@ -57,11 +57,11 @@ Django-Allauth Templates (allauth/account/):
   - Includes a link back to Eventyay login page (`auth.login`) and a contact link (contact_mailto(), built from DEFAULT_FROM_EMAIL)
   - Uses boxed, centered layout via shared allauth.css container classes
 
-7. email/base_message.jinja, email/email_confirmation_message.jinja,
-   email/email_confirmation_signup_message.jinja
-  - HTML bodies for the email confirmation mails (picked up because ACCOUNT_TEMPLATE_EXTENSION = 'jinja')
+7. Email confirmation mails (HTML body)
+  - Not Jinja: CustomAccountAdapter.render_mail (eventyay_common/adapter.py) attaches an HTML body
+    rendered from eventyay_common/templates/eventyay_common/email/email_confirmation(_signup).html
+  - Those templates extend pretixbase/email/base.html, the layout shared with order and notification mails
   - Subject and plain-text alternative still come from allauth's default .txt templates
-  - Inline styles only, so they render consistently in mail clients
 
 Shared Styling:
 ===============

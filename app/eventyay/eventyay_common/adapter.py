@@ -4,9 +4,11 @@ from urllib.parse import urlencode
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.core import context
 from allauth.core.exceptions import ImmediateHttpResponse
+from css_inline import inline as inline_css
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponseRedirect
+from django.template.loader import get_template
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from pydantic import ValidationError
@@ -14,6 +16,13 @@ from pydantic import ValidationError
 from eventyay.base.auth import SPAM_ACCOUNT_ERROR, get_auth_backends
 from eventyay.common.consts import KEY_LAST_FORCE_LOGIN, KEY_LONG_SESSION, KEY_SOCIAL_KEEP_LOGGED_IN
 from eventyay.plugins.socialauth.schemas.oauth2_params import OAuth2Params
+
+# HTML bodies for allauth emails, built on the shared pretixbase email layout.
+# The subject and plain-text body still come from allauth's default templates.
+HTML_MAIL_TEMPLATES = {
+    'account/email/email_confirmation': 'eventyay_common/email/email_confirmation.html',
+    'account/email/email_confirmation_signup': 'eventyay_common/email/email_confirmation_signup.html',
+}
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
@@ -98,6 +107,19 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             signup=signup,
             redirect_url=redirect_url,
         )
+
+    def render_mail(self, template_prefix, email, context, headers=None):
+        msg = super().render_mail(template_prefix, email, context, headers=headers)
+        html_template = HTML_MAIL_TEMPLATES.get(template_prefix)
+        if html_template:
+            html_context = {
+                **context,
+                'site': settings.INSTANCE_NAME,
+                'site_url': settings.SITE_URL,
+                'color': settings.PRETIX_PRIMARY_COLOR,
+            }
+            msg.attach_alternative(inline_css(get_template(html_template).render(html_context)), 'text/html')
+        return msg
 
     def send_account_already_exists_mail(self, email: str) -> None:
         request = context.request

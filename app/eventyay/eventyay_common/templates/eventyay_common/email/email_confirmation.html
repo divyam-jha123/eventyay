@@ -1,0 +1,55 @@
+{% extends "pretixbase/email/base.html" %}
+{% load i18n %}
+{% block header %}
+    <h1>{% trans "Confirm your email address" %}</h1>
+{% endblock %}
+{% block content %}
+    <tr>
+        <td class="containertd">
+            <!--[if gte mso 9]>
+                    <table cellpadding="20"><tr><td>
+            <![endif]-->
+            <div class="content">
+                <p>{% trans "Hello," %}</p>
+                <p>
+                    {% block intro %}
+                        {% blocktrans trimmed %}
+                            Please confirm that {{ email }} is your email address so you can use it with your {{ site }} account.
+                        {% endblocktrans %}
+                    {% endblock %}
+                </p>
+                {% if code %}
+                    <p>{% trans "Your email verification code is listed below. Please enter it in your open browser window." %}</p>
+                    <h2 style="text-align: center; letter-spacing: 4px">{{ code }}</h2>
+                {% else %}
+                    <p class="actions" style="text-align: center">
+                        <a href="{{ activate_url }}" class="button">{% trans "Verify email address" %}</a>
+                    </p>
+                    <p>
+                        {% trans "If the button doesn't work, copy and paste this link into your browser:" %}<br>
+                        <a href="{{ activate_url }}">{{ activate_url }}</a>
+                    </p>
+                {% endif %}
+            </div>
+            <!--[if gte mso 9]>
+                    </td></tr></table>
+            <![endif]-->
+        </td>
+    </tr>
+    {% include "pretixbase/email/separator.html" %}
+    <tr>
+        <td class="containertd">
+            <!--[if gte mso 9]>
+                    <table cellpadding="20"><tr><td>
+            <![endif]-->
+            <div class="content">
+                {% block ignore_notice %}
+                    {% trans "If you didn't request this, you can safely ignore this email." %}
+                {% endblock %}
+            </div>
+            <!--[if gte mso 9]>
+                    </td></tr></table>
+            <![endif]-->
+        </td>
+    </tr>
+{% endblock %}

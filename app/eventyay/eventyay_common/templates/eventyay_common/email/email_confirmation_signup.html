@@ -1,0 +1,12 @@
+{% extends "eventyay_common/email/email_confirmation.html" %}
+{% load i18n %}
+{% block intro %}
+    {% blocktrans trimmed %}
+        Thanks for signing up for {{ site }}! Please confirm that {{ email }} is your email address to complete your registration.
+    {% endblocktrans %}
+{% endblock %}
+{% block ignore_notice %}
+    {% blocktrans trimmed %}
+        If you didn't sign up for {{ site }}, you can safely ignore this email.
+    {% endblocktrans %}
+{% endblock %}

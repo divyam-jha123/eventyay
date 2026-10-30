@@ -116,7 +116,7 @@ def test_page_without_pending_signup_has_no_resend(client, mailoutbox):
 
 
 @pytest.mark.django_db
-def test_signup_email_has_html_body_and_keeps_plain_text(client, mailoutbox):
+def test_signup_email_uses_shared_html_layout_and_keeps_plain_text(client, mailoutbox):
     sign_up(client, 'new@example.com')
 
     message = mailoutbox[0]
@@ -124,30 +124,35 @@ def test_signup_email_has_html_body_and_keeps_plain_text(client, mailoutbox):
     activate_url = message.body.split('go to ')[1].split()[0]
 
     assert mimetype == 'text/html'
+    assert len(message.alternatives) == 1
     assert activate_url.startswith('http')
-    assert html.count(f"href='{activate_url}'") == 2  # button and fallback link
+    assert html.count(f'href="{activate_url}"') == 2  # button and fallback link
     assert 'Verify email address' in html
     assert 'Thanks for signing up for' in html
     assert 'new@example.com' in html
+    # Rendered through pretixbase/email/base.html, with its CSS inlined.
+    assert '<table class="layout"' in html
+    assert 'style="width: 100%;max-width: 600px;' in html
+    assert 'powered by' in html
     # The plain-text alternative is still allauth's default.
     assert 'To confirm this is correct, go to' in message.body
 
 
 def test_add_email_confirmation_uses_non_signup_wording():
     html = render_to_string(
-        'account/email/email_confirmation_message.jinja',
-        {'email': 'extra@example.com', 'activate_url': 'https://example.com/confirm/KEY/'},
+        'eventyay_common/email/email_confirmation.html',
+        {'email': 'extra@example.com', 'activate_url': 'https://example.com/confirm/KEY/', 'site': 'eventyay'},
     )
 
     assert 'Please confirm that extra@example.com is your email address' in html
     assert 'Thanks for signing up' not in html
-    assert "href='https://example.com/confirm/KEY/'" in html
+    assert 'href="https://example.com/confirm/KEY/"' in html
 
 
 def test_confirmation_email_with_code_shows_code_instead_of_link():
     html = render_to_string(
-        'account/email/email_confirmation_signup_message.jinja',
-        {'email': 'new@example.com', 'code': 'XK42PQ'},
+        'eventyay_common/email/email_confirmation_signup.html',
+        {'email': 'new@example.com', 'code': 'XK42PQ', 'site': 'eventyay'},
     )
 
     assert 'XK42PQ' in html
