@@ -4,8 +4,8 @@ from functools import cached_property
 from typing import Any
 
 from allauth.account.internal.decorators import login_not_required
-from allauth.account.internal.flows.email_verification import send_verification_email_to_address
-from allauth.account.models import EmailAddress
+from allauth.account.internal.flows.email_verification import send_verification_email_at_login
+from allauth.account.models import Login
 from allauth.account.stages import EmailVerificationStage, LoginStageController
 from allauth.account.views import ConfirmEmailView as _ConfirmEmailView
 from allauth.account.views import EmailVerificationSentView as _EmailVerificationSentView
@@ -90,22 +90,29 @@ class ConfirmEmailView(_ConfirmEmailView):
 
 # Shown after signup (or a login with an unverified address). Allauth keeps the pending
 # login in the session, which lets us show the target address and offer a resend.
+# A signup with an already registered address yields a login without a user (enumeration
+# prevention); it must look and behave exactly like a real one, so both go through allauth's
+# send_verification_email_at_login().
 @method_decorator(login_not_required, name='dispatch')
 class EmailVerificationSentView(_EmailVerificationSentView):
     template_name = 'account/verification_sent.jinja'
 
     @cached_property
-    def pending_email_address(self) -> EmailAddress | None:
+    def pending_login(self) -> Login | None:
         stage = LoginStageController.enter(self.request, EmailVerificationStage.key)
-        if not stage or not stage.login.user:
+        return stage.login if stage else None
+
+    @cached_property
+    def pending_email(self) -> str | None:
+        login = self.pending_login
+        if not login:
             return None
-        email = stage.login.email or stage.login.user.email
-        return EmailAddress.objects.filter(user=stage.login.user, email__iexact=email, verified=False).first()
+        return login.email or (login.user.email if login.user else None)
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponseRedirect:
-        address = self.pending_email_address
+        login = self.pending_login
         # On success allauth adds its own "sent" message; within the cooldown it silently skips sending.
-        if address and not send_verification_email_to_address(request, address):
+        if login and self.pending_email and not send_verification_email_at_login(request, login):
             messages.error(
                 request,
                 _('A verification email was sent recently. Please wait a few minutes before requesting another one.'),
@@ -114,8 +121,7 @@ class EmailVerificationSentView(_EmailVerificationSentView):
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        address = self.pending_email_address
-        context['pending_email'] = address.email if address else None
+        context['pending_email'] = self.pending_email
         context['messages'] = messages.get_messages(self.request)
         context['contact_email'] = settings.DEFAULT_FROM_EMAIL
         return context
