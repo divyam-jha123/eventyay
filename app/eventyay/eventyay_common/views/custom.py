@@ -123,7 +123,6 @@ class EmailVerificationSentView(_EmailVerificationSentView):
         context = super().get_context_data(**kwargs)
         context['pending_email'] = self.pending_email
         context['messages'] = messages.get_messages(self.request)
-        context['contact_email'] = settings.DEFAULT_FROM_EMAIL
         return context
 
 

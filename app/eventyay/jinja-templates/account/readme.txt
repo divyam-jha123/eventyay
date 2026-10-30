@@ -54,7 +54,7 @@ Django-Allauth Templates (allauth/account/):
   - Rendered via EmailVerificationSentView (eventyay_common.views.custom.EmailVerificationSentView)
   - Shows the pending address from allauth's stashed login and offers a "Resend verification email"
     action (POST to the same URL, rate-limited by allauth)
-  - Includes a link back to Eventyay login page (`auth.login`) and a contact link (DEFAULT_FROM_EMAIL)
+  - Includes a link back to Eventyay login page (`auth.login`) and a contact link (contact_mailto(), built from DEFAULT_FROM_EMAIL)
   - Uses boxed, centered layout via shared allauth.css container classes
 
 7. email/base_message.jinja, email/email_confirmation_message.jinja,

@@ -52,10 +52,11 @@
     </p>
   </div>
 
-  {% if contact_email %}
+  {% set mailto = contact_mailto() %}
+  {% if mailto %}
     <p class='verification-sent-contact'>
       {{ _('Still having trouble?') }}
-      <a href='mailto:{{ contact_email }}'>{{ _('Contact us') }}</a>
+      <a href='{{ mailto }}'>{{ _('Contact us') }}</a>
     </p>
   {% endif %}
 {% endblock content %}

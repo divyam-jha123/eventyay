@@ -27,8 +27,11 @@
           <tr>
             <td style='padding: 16px 28px; background-color: #f7f9fb; border-top: 1px solid #e6e9ed; border-radius: 0 0 8px 8px; font-size: 13px; line-height: 1.6;'>
               <a href='{{ site_url }}' style='color: #2185d0; text-decoration: none;'>{{ settings.SITE_NETLOC }}</a><br>
-              {{ _('Need help?') }}
-              <a href='mailto:{{ settings.DEFAULT_FROM_EMAIL }}' style='color: #666666;'>{{ _('Contact us') }}</a>
+              {% set mailto = contact_mailto() %}
+              {% if mailto %}
+                {{ _('Need help?') }}
+                <a href='{{ mailto }}' style='color: #666666;'>{{ _('Contact us') }}</a>
+              {% endif %}
             </td>
           </tr>
         </table>
