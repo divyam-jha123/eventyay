@@ -44419,6 +44419,45 @@ msgid "Organisers"
 msgstr "Veranstaltende"
 
 #, python-format
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:4
+msgid "Confirm your email address"
+msgstr "Bestätigen Sie Ihre E-Mail-Adresse"
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:13
+msgid "Hello,"
+msgstr "Hallo,"
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:16
+#, python-format
+msgid "Please confirm that %(email)s is your email address so you can use it with your %(site)s account."
+msgstr "Bitte bestätigen Sie, dass %(email)s Ihre E-Mail-Adresse ist, damit Sie sie mit Ihrem %(site)s-Konto verwenden können."
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:22
+msgid "Your email verification code is listed below. Please enter it in your open browser window."
+msgstr "Ihr Bestätigungscode für die E-Mail-Adresse steht unten. Bitte geben Sie ihn in Ihrem geöffneten Browserfenster ein."
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:26
+msgid "Verify email address"
+msgstr "E-Mail-Adresse bestätigen"
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:29
+msgid "If the button doesn't work, copy and paste this link into your browser:"
+msgstr "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link und fügen Sie ihn in Ihren Browser ein:"
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation.html:47
+msgid "If you didn't request this, you can safely ignore this email."
+msgstr "Falls Sie dies nicht angefordert haben, können Sie diese E-Mail ignorieren."
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation_signup.html:4
+#, python-format
+msgid "Thanks for signing up for %(site)s! Please confirm that %(email)s is your email address to complete your registration."
+msgstr "Vielen Dank für Ihre Registrierung bei %(site)s! Bitte bestätigen Sie, dass %(email)s Ihre E-Mail-Adresse ist, um Ihre Registrierung abzuschließen."
+
+#: eventyay/eventyay_common/templates/eventyay_common/email/email_confirmation_signup.html:9
+#, python-format
+msgid "If you didn't sign up for %(site)s, you can safely ignore this email."
+msgstr "Falls Sie sich nicht bei %(site)s registriert haben, können Sie diese E-Mail ignorieren."
+
 #~ msgctxt "invoice"
 #~ msgid "Page %d of %d"
 #~ msgstr "Seite %d von %d"
